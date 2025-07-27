@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kode QR Generator</title>
+    <!-- Memuat Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Gaya kustom untuk font Inter, jika tidak tersedia, fallback ke sans-serif */
+        body {
+            font-family: "Inter", sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md flex flex-col items-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Kode QR Generator</h1>
+
+        <!-- Kolom input teks -->
+        <input
+            type="text"
+            id="qrInput"
+            placeholder="Masukkan teks di sini..."
+            class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+        />
+
+        <!-- Tombol untuk menghasilkan QR Code -->
+        <button
+            id="generateQrBtn"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+        >
+            Hasilkan Kode QR
+        </button>
+
+        <!-- Area untuk menampilkan QR Code -->
+        <div id="qrCodeContainer" class="mt-8 flex justify-center items-center min-h-[150px]">
+            <!-- Gambar QR Code akan dimuat di sini -->
+            <img id="qrCodeImage" src="" alt="Kode QR Anda" class="hidden w-40 h-40 rounded-lg shadow-md" />
+            <p id="placeholderText" class="text-gray-500">Kode QR akan muncul di sini.</p>
+        </div>
+    </div>
+
+    <script>
+        // Mendapatkan referensi elemen-elemen DOM
+        const qrInput = document.getElementById('qrInput');
+        const generateQrBtn = document.getElementById('generateQrBtn');
+        const qrCodeImage = document.getElementById('qrCodeImage');
+        const placeholderText = document.getElementById('placeholderText');
+
+        // Menambahkan event listener ke tombol
+        generateQrBtn.addEventListener('click', () => {
+            const inputText = qrInput.value.trim(); // Mengambil teks dari input dan menghapus spasi di awal/akhir
+
+            if (inputText) {
+                // Jika input tidak kosong, buat URL QR Code
+                // Menggunakan API qrserver.com untuk menghasilkan QR Code
+                const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(inputText)}`;
+
+                // Menetapkan URL ke elemen gambar
+                qrCodeImage.src = qrCodeUrl;
+                qrCodeImage.alt = `Kode QR untuk: ${inputText}`;
+                qrCodeImage.classList.remove('hidden'); // Menampilkan gambar
+                placeholderText.classList.add('hidden'); // Menyembunyikan teks placeholder
+            } else {
+                // Jika input kosong, sembunyikan gambar dan tampilkan placeholder
+                qrCodeImage.classList.add('hidden');
+                placeholderText.classList.remove('hidden');
+                alert('Silakan masukkan teks untuk menghasilkan Kode QR.'); // Menggunakan alert sederhana untuk demo
+            }
+        });
+    </script>
+</body>
+</html>
