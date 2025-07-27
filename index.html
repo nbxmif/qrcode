@@ -168,7 +168,7 @@
                     });
 
                     // Mengurutkan berdasarkan timestamp secara descending (terbaru di atas)
-                    items.sort((a, b) => b.timestamp - a.a.timestamp); // Memperbaiki kesalahan ketik di sini
+                    items.sort((a, b) => b.timestamp - a.timestamp); // Memperbaiki kesalahan ketik di sini
 
                     items.forEach((item) => {
                         const listItem = document.createElement('div');
@@ -443,7 +443,8 @@
                 const length = parseInt(lengthStr, 10);
 
                 if (isNaN(length) || currentIndex + length > dataString.length) {
-                    console.error(`Panjang tidak valid atau data tidak cukup untuk tag ${tag}. Panjang: ${lengthStr}, Sisa data: ${dataString.substring(currentIndex)}`);
+                    // Pesan kesalahan yang lebih jelas
+                    console.error(`Kesalahan parsing TLV: Input string malformed atau tidak lengkap. Tag: '${tag}', Panjang yang dideklarasikan: '${lengthStr}' (diurai sebagai ${length}). Sisa data tidak cukup atau panjang tidak valid. Sisa string: '${dataString.substring(currentIndex)}'`);
                     break;
                 }
 
@@ -516,7 +517,8 @@
                     displayParsedContent(parsedData, parsedContentList);
                     parsedContentContainer.classList.remove('hidden'); // Tampilkan container
                 } else {
-                    parsedContentList.innerHTML = '<p class="text-gray-500">Tidak dapat mengurai konten QR sebagai format TLV yang dikenal.</p>';
+                    // Jika parsing tidak menghasilkan data, tampilkan pesan ini
+                    parsedContentList.innerHTML = '<p class="text-gray-500">Tidak dapat mengurai konten QR sebagai format TLV yang dikenal. Pastikan format input benar.</p>';
                     parsedContentContainer.classList.remove('hidden'); // Tampilkan container dengan pesan
                 }
 
