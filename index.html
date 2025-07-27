@@ -38,14 +38,32 @@
       <div id="qrLoadingIndicator" class="hidden animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-green-200 border-t-green-600 mb-4" role="status" aria-label="Loading QR Code">
         <span class="sr-only">Memuat...</span>
       </div>
-      <!-- Changed image size from w-48 h-48 to w-56 h-56 -->
       <img id="qrCodeImage" src="" alt="Kode QR yang dihasilkan" class="hidden mx-auto w-56 h-56 rounded-lg border border-gray-200 p-1" />
       <p id="placeholderText" class="text-gray-500 mt-4 text-base">QR Code akan muncul di sini</p>
     </div>
 
+    <!-- Download Options Section -->
+    <div id="downloadOptions" class="mt-6 hidden flex flex-col items-center">
+      <div class="mb-4 w-full">
+        <label for="fileTypeSelect" class="block text-gray-700 text-sm font-medium mb-2">Pilih Jenis File:</label>
+        <select id="fileTypeSelect" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="png">PNG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="gif">GIF</option>
+          <option value="svg">SVG</option>
+        </select>
+      </div>
+      <button
+        id="downloadQrBtn"
+        class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        Unduh QR Code
+      </button>
+    </div>
+
     <!-- Parsed Content Section -->
     <div id="parsedContentContainer" class="mt-8 hidden text-left bg-gray-50 p-6 rounded-xl border border-gray-200">
-      <h2 class="text-xl font-semibold mb-4 text-gray-700">Detail Konten (TLV):</h2>
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">Detail Konten (TLV format):</h2>
       <div id="parsedContentList" class="text-sm text-gray-700 overflow-y-auto max-h-80 pr-2">
         <!-- Parsed content will be injected here -->
       </div>
@@ -73,6 +91,9 @@
     const messageBox = document.getElementById('messageBox');
     const messageBoxText = document.getElementById('messageBoxText');
     const messageBoxCloseBtn = document.getElementById('messageBoxCloseBtn');
+    const downloadOptions = document.getElementById('downloadOptions'); // New
+    const fileTypeSelect = document.getElementById('fileTypeSelect');   // New
+    const downloadQrBtn = document.getElementById('downloadQrBtn');     // New
 
     // Define descriptions for common EMVCo/QRIS TLV tags
     const tagDescriptions = {
@@ -253,6 +274,7 @@
       placeholderText.classList.remove('hidden');
       parsedContentContainer.classList.add('hidden');
       parsedContentList.innerHTML = ''; // Clear previous parsed content
+      downloadOptions.classList.add('hidden'); // Hide download options initially
 
       if (!input) {
         showMessageBox('Mohon masukkan teks atau URL untuk menghasilkan QR Code.');
@@ -263,8 +285,11 @@
       qrLoadingIndicator.classList.remove('hidden');
       placeholderText.classList.add('hidden'); // Hide placeholder when loading
 
-      // Request a larger QR code image from the API
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(input)}`; // Changed size to 200x200
+      // Get the selected file type for generation
+      const selectedFileType = fileTypeSelect.value;
+
+      // Request a larger QR code image from the API, now including format
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(input)}&format=${selectedFileType}`;
       qrCodeImage.src = qrUrl; // Set the src immediately to trigger loading
 
       // Use a Promise to handle image loading for better feedback
@@ -272,6 +297,7 @@
         qrCodeImage.onload = () => {
           qrLoadingIndicator.classList.add('hidden');
           qrCodeImage.classList.remove('hidden');
+          downloadOptions.classList.remove('hidden'); // Show download options after QR is loaded
           resolve();
         };
         qrCodeImage.onerror = () => {
@@ -279,6 +305,7 @@
           showMessageBox('Gagal memuat QR Code. Pastikan koneksi internet Anda stabil.');
           qrCodeImage.classList.add('hidden'); // Hide broken image icon
           placeholderText.classList.remove('hidden'); // Show placeholder again
+          downloadOptions.classList.add('hidden'); // Hide download options on error
           resolve(); // Resolve even on error to continue flow
         };
       });
@@ -295,17 +322,41 @@
       }
     }
 
+    /**
+     * Handles the download of the generated QR code.
+     */
+    function downloadQrCode() {
+      const input = qrInput.value.trim();
+      if (!input) {
+        showMessageBox('Tidak ada QR Code untuk diunduh. Mohon hasilkan QR Code terlebih dahulu.');
+        return;
+      }
+
+      const selectedFileType = fileTypeSelect.value;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(input)}&format=${selectedFileType}`; // Use a larger size for download
+
+      // Create a temporary anchor element to trigger the download
+      const link = document.createElement('a');
+      link.href = qrUrl;
+      link.download = `qrcode_${Date.now()}.${selectedFileType}`; // Dynamic filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
     // Event Listeners
     generateQrBtn.addEventListener('click', generateQrCode);
     qrInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') generateQrCode();
     });
+    downloadQrBtn.addEventListener('click', downloadQrCode); // New event listener for download button
 
     // Initial state setup
     document.addEventListener('DOMContentLoaded', () => {
       qrCodeImage.classList.add('hidden');
       placeholderText.classList.remove('hidden');
       parsedContentContainer.classList.add('hidden');
+      downloadOptions.classList.add('hidden'); // Ensure hidden on load
     });
   </script>
 </body>
