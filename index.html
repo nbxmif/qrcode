@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kode QR Generator Sederhana</title>
+    <title>Simple QR-code Generator</title>
     <!-- Memuat Tailwind CSS untuk styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -15,11 +15,11 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md flex flex-col items-center">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Kode QR Generator</h1>
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">QRCode Generator</h1>
 
         <!-- Label untuk kolom input teks -->
         <label for="qrInput" class="block text-gray-700 text-sm font-bold mb-2">
-            Konten QR:
+            Input QR Content here:
         </label>
         <!-- Kolom input teks -->
         <input
@@ -41,12 +41,12 @@
         <div id="qrCodeContainer" class="mt-8 flex justify-center items-center min-h-[150px]">
             <!-- Gambar QR Code akan dimuat di sini -->
             <img id="qrCodeImage" src="" alt="Kode QR Anda" class="hidden w-40 h-40 rounded-lg shadow-md" />
-            <p id="placeholderText" class="text-gray-500">Kode QR akan muncul di sini.</p>
+            <p id="placeholderText" class="text-gray-500">Kode QR akan muncul di sini, Scan jika sudah muncul</p>
         </div>
 
         <!-- Bagian untuk menampilkan deskripsi konten QR yang diurai -->
         <div id="parsedContentContainer" class="mt-10 w-full hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Detail Konten QR</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Detail Konten QR:</h2>
             <div id="parsedContentList" class="bg-gray-50 p-4 rounded-lg shadow-inner max-h-60 overflow-y-auto text-sm text-gray-700">
                 <!-- Deskripsi konten QR akan dimuat di sini -->
             </div>
@@ -220,6 +220,14 @@
                 placeholderText.textContent = 'Silakan masukkan teks untuk menghasilkan Kode QR.';
                 parsedContentContainer.classList.add('hidden'); // Sembunyikan container parsing jika input kosong
                 parsedContentList.innerHTML = ''; // Kosongkan konten parsing
+            }
+        });
+
+        // Event listener untuk input field agar bisa menekan "Enter"
+        qrInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Mencegah perilaku default "Enter" (misalnya, submit form jika ada)
+                generateQrBtn.click(); // Memicu klik pada tombol "Hasilkan Kode QR"
             }
         });
     </script>
