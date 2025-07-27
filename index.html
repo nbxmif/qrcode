@@ -1,235 +1,312 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple QR-code Generator</title>
-    <!-- Memuat Tailwind CSS untuk styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Gaya kustom untuk font Inter, jika tidak tersedia, fallback ke sans-serif */
-        body {
-            font-family: "Inter", sans-serif;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md flex flex-col items-center">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">QRCode Generator</h1>
+  <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">QR Code Generator</h1>
 
-        <!-- Label untuk kolom input teks -->
-        <label for="qrInput" class="block text-gray-700 text-sm font-bold mb-2">
-            Input QR Content here:
-        </label>
-        <!-- Kolom input teks -->
-        <input
-            type="text"
-            id="qrInput"
-            placeholder="Masukkan teks, URL, atau informasi lain di sini..."
-            class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-700"
-        />
-
-        <!-- Tombol untuk menghasilkan QR Code -->
-        <button
-            id="generateQrBtn"
-            class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-        >
-            Hasilkan Kode QR
-        </button>
-
-        <!-- Area untuk menampilkan QR Code -->
-        <div id="qrCodeContainer" class="mt-8 flex justify-center items-center min-h-[150px]">
-            <!-- Gambar QR Code akan dimuat di sini -->
-            <img id="qrCodeImage" src="" alt="Kode QR Anda" class="hidden w-40 h-40 rounded-lg shadow-md" />
-            <p id="placeholderText" class="text-gray-500">Kode QR akan muncul di sini, Scan jika sudah muncul</p>
-        </div>
-
-        <!-- Bagian untuk menampilkan deskripsi konten QR yang diurai -->
-        <div id="parsedContentContainer" class="mt-10 w-full hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Detail Konten QR:</h2>
-            <div id="parsedContentList" class="bg-gray-50 p-4 rounded-lg shadow-inner max-h-60 overflow-y-auto text-sm text-gray-700">
-                <!-- Deskripsi konten QR akan dimuat di sini -->
-            </div>
-        </div>
-
-        <!-- Bagian untuk menampilkan riwayat input QR -->
-        <!-- Bagian ini tetap dihapus karena fungsionalitas database Firebase dihapus -->
-        <!-- <div class="mt-10 w-full">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Riwayat Input QR</h2>
-            <div id="qrHistoryList" class="bg-gray-50 p-4 rounded-lg shadow-inner max-h-60 overflow-y-auto">
-                <p class="text-gray-500 text-center" id="loadingHistory">Memuat riwayat...</p>
-            </div>
-            <button
-                id="downloadDataBtn"
-                class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 w-full"
-            >
-                Unduh Semua Data Input
-            </button>
-        </div> -->
+    <!-- Input Section -->
+    <div class="mb-4">
+      <input
+        id="qrInput"
+        type="text"
+        placeholder="Masukkan teks atau URL (misal: https://google.com atau data TLV)"
+        class="w-full p-3 border border-gray-300 rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-200 ease-in-out"
+        aria-label="Input untuk QR Code"
+      />
+      <button
+        id="generateQrBtn"
+        class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+      >
+        Hasilkan QR Code
+      </button>
     </div>
 
-    <script type="module">
-        // Mendapatkan referensi elemen-elemen DOM
-        const qrInput = document.getElementById('qrInput');
-        const generateQrBtn = document.getElementById('generateQrBtn');
-        const qrCodeImage = document.getElementById('qrCodeImage');
-        const placeholderText = document.getElementById('placeholderText');
-        const parsedContentContainer = document.getElementById('parsedContentContainer');
-        const parsedContentList = document.getElementById('parsedContentList');
+    <!-- QR Code Display Section -->
+    <div id="qrCodeContainer" class="mt-8 flex flex-col items-center justify-center">
+      <div id="qrLoadingIndicator" class="hidden animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-green-200 border-t-green-600 mb-4" role="status" aria-label="Loading QR Code">
+        <span class="sr-only">Memuat...</span>
+      </div>
+      <!-- Changed image size from w-48 h-48 to w-56 h-56 -->
+      <img id="qrCodeImage" src="" alt="Kode QR yang dihasilkan" class="hidden mx-auto w-56 h-56 rounded-lg border border-gray-200 p-1" />
+      <p id="placeholderText" class="text-gray-500 mt-4 text-base">QR Code akan muncul di sini</p>
+    </div>
 
-        // --- Fungsi Parsing Konten QR ---
-        // Definisi deskripsi tag EMVCo/QRIS yang relevan
-        const tagDescriptions = {
-            '00': 'Payload Format Indicator',
-            '01': 'Point of Initiation Method',
-            '26': 'Merchant Account Information (Specific)', // Ini akan memiliki sub-tag
-            '51': 'Merchant Account Information (QRIS Specific)', // Ini juga akan memiliki sub-tag
-            '52': 'Merchant Category Code (MCC)',
-            '53': 'Transaction Currency',
-            '54': 'Transaction Amount',
-            '55': 'Tip or Convenience Fee Indicator',
-            '58': 'Country Code',
-            '59': 'Merchant Name',
-            '60': 'Merchant City',
-            '61': 'Postal Code',
-            '62': 'Additional Data Field Template',
-            '63': 'CRC (Cyclic Redundancy Check)',
-            // Tambahkan tag lain sesuai kebutuhan
-        };
+    <!-- Parsed Content Section -->
+    <div id="parsedContentContainer" class="mt-8 hidden text-left bg-gray-50 p-6 rounded-xl border border-gray-200">
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">Detail Konten (TLV):</h2>
+      <div id="parsedContentList" class="text-sm text-gray-700 overflow-y-auto max-h-80 pr-2">
+        <!-- Parsed content will be injected here -->
+      </div>
+    </div>
 
-        // Deskripsi sub-tag untuk Tag 26 dan 51 (contoh untuk QRIS)
-        const subTagDescriptions = {
-            '26': {
-                '00': 'Globally Unique Identifier (GUID)', '01': 'Payment Network Specific', '02': 'Merchant Criteria', '03': 'Bill Number', '04': 'Mobile Number', '05': 'Store Label', '06': 'Loyalty Number', '07': 'Reference Label', '08': 'Customer Label', '09': 'Terminal Label', '10': 'Purpose of Transaction', '11': 'Additional Consumer Data Request', '12': 'RFU for EMVCo', '13': 'RFU for EMVCo', '14': 'RFU for EMVCo', '15': 'RFU for EMVCo', '16': 'RFU for EMVCo', '17': 'RFU for EMVCo', '18': 'RFU for EMVCo', '19': 'RFU for EMVCo', '20': 'RFU for EMVCo', '21': 'RFU for EMVCo', '22': 'RFU for EMVCo', '23': 'RFU for EMVCo', '24': 'RFU for EMVCo', '25': 'RFU for EMVCo', '26': 'RFU for EMVCo', '27': 'RFU for EMVCo', '28': 'RFU for EMVCo', '29': 'RFU for EMVCo', '30': 'RFU for EMVCo', '31': 'RFU for EMVCo', '32': 'RFU for EMVCo', '33': 'RFU for EMVCo', '34': 'RFU for EMVCo', '35': 'RFU for EMVCo', '36': 'RFU for EMVCo', '37': 'RFU for EMVCo', '38': 'RFU for EMVCo', '39': 'RFU for EMVCo', '40': 'RFU for EMVCo', '41': 'RFU for EMVCo', '42': 'RFU for EMVCo', '43': 'RFU for EMVCo', '44': 'RFU for EMVCo', '45': 'RFU for EMVCo', '46': 'RFU for EMVCo', '47': 'RFU for EMVCo', '48': 'RFU for EMVCo', '49': 'RFU for EMVCo', '50': 'RFU for EMVCo', '51': 'RFU for EMVCo', '52': 'RFU for EMVCo', '53': 'RFU for EMVCo', '54': 'RFU for EMVCo', '55': 'RFU for EMVCo', '56': 'RFU for EMVCo', '57': 'RFU for EMVCo', '58': 'RFU for EMVCo', '59': 'RFU for EMVCo', '60': 'RFU for EMVCo', '61': 'RFU for EMVCo', '62': 'RFU for EMVCo', '63': 'RFU for EMVCo', '64': 'RFU for EMVCo', '65': 'RFU for EMVCo', '66': 'RFU for EMVCo', '67': 'RFU for EMVCo', '68': 'RFU for EMVCo', '69': 'RFU for EMVCo', '70': 'RFU for EMVCo', '71': 'RFU for EMVCo', '72': 'RFU for EMVCo', '73': 'RFU for EMVCo', '74': 'RFU for EMVCo', '75': 'RFU for EMVCo', '76': 'RFU for EMVCo', '77': 'RFU for EMVCo', '78': 'RFU for EMVCo', '79': 'RFU for EMVCo', '80': 'RFU for EMVCo', '81': 'RFU for EMVCo', '82': 'RFU for EMVCo', '83': 'RFU for EMVCo', '84': 'RFU for EMVCo', '85': 'RFU for EMVCo', '86': 'RFU for EMVCo', '87': 'RFU for EMVCo', '88': 'RFU for EMVCo', '89': 'RFU for EMVCo', '90': 'RFU for EMVCo', '91': 'RFU for EMVCo', '92': 'RFU for EMVCo', '93': 'RFU for EMVCo', '94': 'RFU for EMVCo', '95': 'RFU for EMVCo', '96': 'RFU for EMVCo', '97': 'RFU for EMVCo', '98': 'RFU for EMVCo', '99': 'RFU for EMVCo',
-            },
-            '51': {
-                '00': 'Globally Unique Identifier (GUID)', '01': 'QRIS Data Element', '02': 'QRIS Data Element', '03': 'QRIS Data Element', '04': 'QRIS Data Element', '05': 'QRIS Data Element', '06': 'QRIS Data Element', '07': 'QRIS Data Element', '08': 'QRIS Data Element', '09': 'QRIS Data Element', '10': 'QRIS Data Element', '11': 'QRIS Data Element', '12': 'QRIS Data Element', '13': 'QRIS Data Element', '14': 'QRIS Data Element', '15': 'QRIS Data Element', '16': 'QRIS Data Element', '17': 'QRIS Data Element', '18': 'QRIS Data Element', '19': 'QRIS Data Element', '20': 'QRIS Data Element', '21': 'QRIS Data Element', '22': 'QRIS Data Element', '23': 'QRIS Data Element', '24': 'QRIS Data Element', '25': 'QRIS Data Element', '26': 'QRIS Data Element', '27': 'QRIS Data Element', '28': 'QRIS Data Element', '29': 'QRIS Data Element', '30': 'QRIS Data Element', '31': 'QRIS Data Element', '32': 'QRIS Data Element', '33': 'QRIS Data Element', '34': 'QRIS Data Element', '35': 'QRIS Data Element', '36': 'QRIS Data Element', '37': 'QRIS Data Element', '38': 'QRIS Data Element', '39': 'QRIS Data Element', '40': 'QRIS Data Element', '41': 'QRIS Data Element', '42': 'QRIS Data Element', '43': 'QRIS Data Element', '44': 'QRIS Data Element', '45': 'QRIS Data Element', '46': 'QRIS Data Element', '47': 'QRIS Data Element', '48': 'QRIS Data Element', '49': 'QRIS Data Element', '50': 'QRIS Data Element', '51': 'QRIS Data Element', '52': 'QRIS Data Element', '53': 'QRIS Data Element', '54': 'QRIS Data Element', '55': 'QRIS Data Element', '56': 'QRIS Data Element', '57': 'QRIS Data Element', '58': 'QRIS Data Element', '59': 'QRIS Data Element', '60': 'QRIS Data Element', '61': 'QRIS Data Element', '62': 'QRIS Data Element', '63': 'QRIS Data Element', '64': 'QRIS Data Element', '65': 'QRIS Data Element', '66': 'QRIS Data Element', '67': 'QRIS Data Element', '68': 'QRIS Data Element', '69': 'QRIS Data Element', '70': 'QRIS Data Element', '71': 'QRIS Data Element', '72': 'QRIS Data Element', '73': 'QRIS Data Element', '74': 'QRIS Data Element', '75': 'QRIS Data Element', '76': 'QRIS Data Element', '77': 'QRIS Data Element', '78': 'QRIS Data Element', '79': 'QRIS Data Element', '80': 'QRIS Data Element', '81': 'QRIS Data Element', '82': 'QRIS Data Element', '83': 'QRIS Data Element', '84': 'QRIS Data Element', '85': 'QRIS Data Element', '86': 'QRIS Data Element', '87': 'QRIS Data Element', '88': 'QRIS Data Element', '89': 'QRIS Data Element', '90': 'QRIS Data Element', '91': 'QRIS Data Element', '92': 'QRIS Data Element', '93': 'QRIS Data Element', '94': 'QRIS Data Element', '95': 'QRIS Data Element', '96': 'QRIS Data Element', '97': 'QRIS Data Element', '98': 'QRIS Data Element', '99': 'QRIS Data Element',
-            }
-        };
+    <!-- Message Box for alerts -->
+    <div id="messageBox" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+      <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm mx-auto">
+        <p id="messageBoxText" class="text-lg font-medium text-gray-800 mb-4"></p>
+        <button id="messageBoxCloseBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 ease-in-out">Tutup</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Get references to DOM elements
+    const qrInput = document.getElementById('qrInput');
+    const generateQrBtn = document.getElementById('generateQrBtn');
+    const qrCodeImage = document.getElementById('qrCodeImage');
+    const placeholderText = document.getElementById('placeholderText');
+    const qrLoadingIndicator = document.getElementById('qrLoadingIndicator');
+    const parsedContentContainer = document.getElementById('parsedContentContainer');
+    const parsedContentList = document.getElementById('parsedContentList');
+    const messageBox = document.getElementById('messageBox');
+    const messageBoxText = document.getElementById('messageBoxText');
+    const messageBoxCloseBtn = document.getElementById('messageBoxCloseBtn');
+
+    // Define descriptions for common EMVCo/QRIS TLV tags
+    const tagDescriptions = {
+      '00': 'Payload Format Indicator',
+      '01': 'Point of Initiation Method',
+      '02': 'Visa Credit', // Example for Merchant Account Information (MAI)
+      '03': 'Mastercard Credit', // Example for MAI
+      '04': 'EMVCo Reserved', // Example for MAI
+      '05': 'QRIS Merchant Criteria', // Example for MAI
+      '06': 'QRIS Merchant ID', // Example for MAI
+      '07': 'QRIS Terminal ID', // Example for MAI
+      '08': 'QRIS Merchant Name', // Example for MAI
+      '09': 'QRIS City', // Example for MAI
+      '10': 'QRIS Postal Code', // Example for MAI
+      '11': 'QRIS Country', // Example for MAI
+      '12': 'QRIS Transaction Type', // Example for MAI
+      '13': 'QRIS Reference Label', // Example for MAI
+      '14': 'QRIS Consumer ID', // Example for MAI
+      '15': 'QRIS Bill Number', // Example for MAI
+      '16': 'QRIS Mobile Number', // Example for MAI
+      '17': 'QRIS Store Label', // Example for MAI
+      '18': 'QRIS Loyalty Number', // Example for MAI
+      '19': 'QRIS Customer Label', // Example for MAI
+      '20': 'QRIS Purpose of Transaction', // Example for MAI
+      '21': 'QRIS Additional Consumer Data', // Example for MAI
+      '22': 'QRIS Payment Instrument Type', // Example for MAI
+      '23': 'QRIS Payment Instrument ID', // Example for MAI
+      '24': 'QRIS Payment Instrument Expiry', // Example for MAI
+      '25': 'QRIS Payment Instrument Holder Name', // Example for MAI
+      '26': 'Merchant Account Information (Template)',
+      '51': 'QRIS Merchant Information (Template)',
+      '52': 'Merchant Category Code',
+      '53': 'Currency Code (ISO 4217)',
+      '54': 'Transaction Amount',
+      '55': 'Tip or Convenience Indicator',
+      '56': 'Value of Convenience Fee Fixed',
+      '57': 'Value of Convenience Fee Percentage',
+      '58': 'Country Code (ISO 3166-1 alpha-2)',
+      '59': 'Merchant Name',
+      '60': 'Merchant City',
+      '61': 'Postal Code',
+      '62': 'Additional Data Field (Template)',
+      '63': 'CRC (Cyclic Redundancy Check)',
+      '64': 'Merchant Information Language (Template)',
+      '65': 'RFU for EMVCo', // Reserved for Future Use
+      '66': 'RFU for EMVCo',
+      '67': 'RFU for EMVCo',
+      '68': 'RFU for EMVCo',
+      '69': 'RFU for EMVCo',
+      '70': 'RFU for EMVCo',
+      '71': 'RFU for EMVCo',
+      '72': 'RFU for EMVCo',
+      '73': 'RFU for EMVCo',
+      '74': 'RFU for EMVCo',
+      '75': 'RFU for EMVCo',
+      '76': 'RFU for EMVCo',
+      '77': 'RFU for EMVCo',
+      '78': 'RFU for EMVCo',
+      '79': 'RFU for EMVCo',
+      '80': 'RFU for EMVCo',
+      '81': 'RFU for EMVCo',
+      '82': 'RFU for EMVCo',
+      '83': 'RFU for EMVCo',
+      '84': 'RFU for EMVCo',
+      '85': 'Merchant Information - Proprietary',
+      '99': 'Unreserved Templates',
+    };
 
 
-        /**
-         * Mengurai string TLV (Tag-Length-Value) secara rekursif.
-         * @param {string} dataString String data TLV.
-         * @param {string} parentTag Opsional, tag induk untuk sub-tag.
-         * @returns {Array<Object>} Array objek yang diurai {tag, description, value, children}.
-         */
-        function parseTLV(dataString, parentTag = null) {
-            const parsedData = [];
-            let currentIndex = 0;
+    /**
+     * Shows a custom message box instead of alert().
+     * @param {string} message - The message to display.
+     */
+    function showMessageBox(message) {
+      messageBoxText.textContent = message;
+      messageBox.classList.remove('hidden');
+    }
 
-            while (currentIndex < dataString.length) {
-                // Pastikan ada cukup karakter untuk tag dan length (2 + 2 = 4)
-                if (currentIndex + 4 > dataString.length) {
-                    console.warn("Data TLV tidak lengkap di akhir string:", dataString.substring(currentIndex));
-                    break;
-                }
+    // Close button for the message box
+    messageBoxCloseBtn.addEventListener('click', () => {
+      messageBox.classList.add('hidden');
+    });
 
-                const tag = dataString.substring(currentIndex, currentIndex + 2);
-                currentIndex += 2;
+    /**
+     * Parses a TLV (Tag-Length-Value) string recursively.
+     * @param {string} tlvString - The TLV string to parse.
+     * @returns {Array<Object>} An array of parsed TLV objects.
+     */
+    function parseTLV(tlvString) {
+      const result = [];
+      let i = 0;
+      while (i + 4 <= tlvString.length) {
+        const tag = tlvString.slice(i, i + 2);
+        const lengthStr = tlvString.slice(i + 2, i + 4);
+        const len = parseInt(lengthStr, 10);
 
-                const lengthStr = dataString.substring(currentIndex, currentIndex + 2);
-                currentIndex += 2;
-
-                const length = parseInt(lengthStr, 10);
-
-                if (isNaN(length) || currentIndex + length > dataString.length) {
-                    // Pesan kesalahan yang lebih jelas
-                    console.error(`Kesalahan parsing TLV: Input string malformed atau tidak lengkap. Tag: '${tag}', Panjang yang dideklarasikan: '${lengthStr}' (diurai sebagai ${length}). Sisa data tidak cukup atau panjang tidak valid. Sisa string: '${dataString.substring(currentIndex)}'`);
-                    break;
-                }
-
-                const value = dataString.substring(currentIndex, currentIndex + length);
-                currentIndex += length;
-
-                let description = 'Tidak Diketahui';
-                let children = [];
-
-                if (parentTag && subTagDescriptions[parentTag] && subTagDescriptions[parentTag][tag]) {
-                    description = subTagDescriptions[parentTag][tag];
-                } else if (tagDescriptions[tag]) {
-                    description = tagDescriptions[tag];
-                }
-
-                // Periksa apakah tag ini mungkin memiliki sub-tag (misalnya, Tag 26 dan 51)
-                if ((tag === '26' || tag === '51') && value.length > 0) {
-                    children = parseTLV(value, tag); // Rekursif untuk sub-tag
-                }
-
-                parsedData.push({ tag, description, value, children });
-            }
-            return parsedData;
+        // Basic validation for length and remaining string
+        if (isNaN(len) || len < 0 || (i + 4 + len) > tlvString.length) {
+          console.error(`Error parsing TLV: Invalid length or string truncated at index ${i}. Tag: ${tag}, Length String: ${lengthStr}`);
+          // Attempt to recover by skipping this segment, or stop parsing
+          showMessageBox(`Error parsing TLV: Invalid length or malformed data at tag ${tag}. Parsing stopped.`);
+          break;
         }
 
-        /**
-         * Menampilkan data QR yang diurai ke dalam DOM.
-         * @param {Array<Object>} data Array objek yang diurai.
-         * @param {HTMLElement} parentElement Elemen DOM tempat data akan ditambahkan.
-         * @param {number} level Level indentasi untuk tampilan.
-         */
-        function displayParsedContent(data, parentElement, level = 0) {
-            // Check if data is empty or null, if so, display a message
-            if (!data || data.length === 0) {
-                parentElement.innerHTML = '<p class="text-gray-500">Tidak dapat mengurai konten QR sebagai format TLV yang dikenal. Pastikan format input benar.</p>';
-                return;
-            }
+        const value = tlvString.slice(i + 4, i + 4 + len);
+        i += 4 + len;
 
-            data.forEach(item => {
-                const p = document.createElement('p');
-                p.className = `mb-1 ${level > 0 ? 'ml-4' : ''}`; // Indentasi visual
-                p.innerHTML = `
-                    <span class="font-semibold">Tag ${item.tag} (${item.description})</span>: ${item.value}
-                `;
-                parentElement.appendChild(p);
+        const description = tagDescriptions[tag] || 'Tidak diketahui';
+        let children = [];
 
-                if (item.children && item.children.length > 0) {
-                    const ul = document.createElement('ul');
-                    ul.className = 'list-disc list-inside ml-4'; // Gaya daftar untuk sub-tag
-                    displayParsedContent(item.children, ul, level + 1);
-                    parentElement.appendChild(ul);
-                }
-            });
+        // Recursively parse known template tags
+        if (['26', '51', '62', '64', '85', '99'].includes(tag)) {
+          children = parseTLV(value);
         }
 
+        result.push({ tag, length: len, value, description, children });
+      }
+      return result;
+    }
 
-        // Event listener untuk tombol Generate QR
-        generateQrBtn.addEventListener('click', () => {
-            const inputText = qrInput.value.trim(); // Mengambil teks dari input dan menghapus spasi di awal/akhir
+    /**
+     * Displays the parsed TLV content in a structured way.
+     * @param {Array<Object>} data - The array of parsed TLV objects.
+     * @param {HTMLElement} parentElement - The DOM element to append the content to.
+     * @param {number} level - The current nesting level for indentation.
+     */
+    function displayParsedContent(data, parentElement, level = 0) {
+      // Clear previous content if it's the top level
+      if (level === 0) {
+        parentElement.innerHTML = '';
+      }
 
-            if (inputText) {
-                // Jika input tidak kosong, buat URL QR Code
-                // Menggunakan API qrserver.com untuk menghasilkan QR Code
-                const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(inputText)}`;
+      if (!data.length) {
+        // Only show this message if it's the top level and no data was parsed
+        if (level === 0) {
+          parentElement.innerHTML = '<p class="text-gray-500 italic">Tidak ada data TLV yang dikenali atau format tidak valid.</p>';
+        }
+        return;
+      }
 
-                // Menetapkan URL ke elemen gambar
-                qrCodeImage.src = qrCodeUrl;
-                qrCodeImage.alt = `Kode QR untuk: ${inputText}`;
-                qrCodeImage.classList.remove('hidden'); // Menampilkan gambar
-                placeholderText.classList.add('hidden'); // Menyembunyikan teks placeholder
+      data.forEach(item => {
+        const div = document.createElement('div');
+        div.className = `mb-1 ${level > 0 ? `ml-${level * 4}` : ''}`; // Indent based on level
 
-                // Parse dan tampilkan konten QR
-                parsedContentList.innerHTML = ''; // Bersihkan konten sebelumnya
-                const parsedData = parseTLV(inputText);
-                displayParsedContent(parsedData, parsedContentList); // Panggil fungsi display tanpa memeriksa panjang di sini
-                parsedContentContainer.classList.remove('hidden'); // Selalu tampilkan container setelah generate
+        const tagSpan = document.createElement('span');
+        tagSpan.className = 'font-semibold text-green-700';
+        tagSpan.textContent = `Tag ${item.tag}`;
 
-            } else {
-                // Jika input kosong, sembunyikan gambar dan tampilkan placeholder
-                qrCodeImage.classList.add('hidden');
-                placeholderText.classList.remove('hidden');
-                placeholderText.textContent = 'Silakan masukkan teks untuk menghasilkan Kode QR.';
-                parsedContentContainer.classList.add('hidden'); // Sembunyikan container parsing jika input kosong
-                parsedContentList.innerHTML = ''; // Kosongkan konten parsing
-            }
-        });
+        const descSpan = document.createElement('span');
+        descSpan.className = 'text-red-600 ml-1';
+        descSpan.textContent = `(${item.description})`;
 
-        // Event listener untuk input field agar bisa menekan "Enter"
-        qrInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Mencegah perilaku default "Enter" (misalnya, submit form jika ada)
-                generateQrBtn.click(); // Memicu klik pada tombol "Hasilkan Kode QR"
-            }
-        });
-    </script>
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'text-gray-800 break-words';
+        valueSpan.textContent = `: ${item.value}`;
+
+        div.appendChild(tagSpan);
+        div.appendChild(descSpan);
+        div.appendChild(valueSpan);
+        parentElement.appendChild(div);
+
+        // Recursively display children
+        if (item.children && item.children.length > 0) {
+          displayParsedContent(item.children, parentElement, level + 1);
+        }
+      });
+    }
+
+    /**
+     * Handles the QR code generation and TLV parsing logic.
+     */
+    async function generateQrCode() {
+      const input = qrInput.value.trim();
+
+      // Reset display
+      qrCodeImage.classList.add('hidden');
+      qrLoadingIndicator.classList.add('hidden');
+      placeholderText.classList.remove('hidden');
+      parsedContentContainer.classList.add('hidden');
+      parsedContentList.innerHTML = ''; // Clear previous parsed content
+
+      if (!input) {
+        showMessageBox('Mohon masukkan teks atau URL untuk menghasilkan QR Code.');
+        return;
+      }
+
+      // Show loading indicator
+      qrLoadingIndicator.classList.remove('hidden');
+      placeholderText.classList.add('hidden'); // Hide placeholder when loading
+
+      // Request a larger QR code image from the API
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(input)}`; // Changed size to 200x200
+      qrCodeImage.src = qrUrl; // Set the src immediately to trigger loading
+
+      // Use a Promise to handle image loading for better feedback
+      await new Promise((resolve) => {
+        qrCodeImage.onload = () => {
+          qrLoadingIndicator.classList.add('hidden');
+          qrCodeImage.classList.remove('hidden');
+          resolve();
+        };
+        qrCodeImage.onerror = () => {
+          qrLoadingIndicator.classList.add('hidden');
+          showMessageBox('Gagal memuat QR Code. Pastikan koneksi internet Anda stabil.');
+          qrCodeImage.classList.add('hidden'); // Hide broken image icon
+          placeholderText.classList.remove('hidden'); // Show placeholder again
+          resolve(); // Resolve even on error to continue flow
+        };
+      });
+
+      // Attempt to parse TLV if the input looks like one (starts with '00' or similar common TLV tags)
+      // This is a heuristic, real validation would be more complex.
+      if (input.match(/^(00|01|26|51|52|53|54|58|59|60|63)\d{2}.+/)) {
+        const parsed = parseTLV(input);
+        displayParsedContent(parsed, parsedContentList);
+        parsedContentContainer.classList.remove('hidden');
+      } else {
+        // If it doesn't look like TLV, hide the parsed content section
+        parsedContentContainer.classList.add('hidden');
+      }
+    }
+
+    // Event Listeners
+    generateQrBtn.addEventListener('click', generateQrCode);
+    qrInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') generateQrCode();
+    });
+
+    // Initial state setup
+    document.addEventListener('DOMContentLoaded', () => {
+      qrCodeImage.classList.add('hidden');
+      placeholderText.classList.remove('hidden');
+      parsedContentContainer.classList.add('hidden');
+    });
+  </script>
 </body>
 </html>
