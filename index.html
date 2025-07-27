@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kode QR Generator dengan Database dan Deskripsi</title>
+    <title>Kode QR Generator Sederhana</title>
     <!-- Memuat Tailwind CSS untuk styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -16,11 +16,6 @@
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md flex flex-col items-center">
         <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Kode QR Generator</h1>
-
-        <!-- Menampilkan User ID -->
-        <div id="userIdDisplay" class="text-sm text-gray-600 mb-4 text-center">
-            Memuat pengguna...
-        </div>
 
         <!-- Label untuk kolom input teks -->
         <label for="qrInput" class="block text-gray-700 text-sm font-bold mb-2">
@@ -51,142 +46,36 @@
 
         <!-- Bagian untuk menampilkan deskripsi konten QR yang diurai -->
         <div id="parsedContentContainer" class="mt-10 w-full hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Detail dari Konten QR</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Detail Konten QR</h2>
             <div id="parsedContentList" class="bg-gray-50 p-4 rounded-lg shadow-inner max-h-60 overflow-y-auto text-sm text-gray-700">
                 <!-- Deskripsi konten QR akan dimuat di sini -->
             </div>
         </div>
 
         <!-- Bagian untuk menampilkan riwayat input QR -->
-        <div class="mt-10 w-full">
+        <!-- Bagian ini tetap dihapus karena fungsionalitas database Firebase dihapus -->
+        <!-- <div class="mt-10 w-full">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Riwayat Input QR</h2>
             <div id="qrHistoryList" class="bg-gray-50 p-4 rounded-lg shadow-inner max-h-60 overflow-y-auto">
                 <p class="text-gray-500 text-center" id="loadingHistory">Memuat riwayat...</p>
-                <!-- Riwayat QR akan dimuat di sini -->
             </div>
-        </div>
+            <button
+                id="downloadDataBtn"
+                class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 w-full"
+            >
+                Unduh Semua Data Input
+            </button>
+        </div> -->
     </div>
 
     <script type="module">
-        // Mengimpor modul Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Variabel global yang disediakan oleh lingkungan Canvas
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Inisialisasi Firebase
-        let app;
-        let db;
-        let auth;
-        let userId = 'anonim'; // Default user ID
-
         // Mendapatkan referensi elemen-elemen DOM
         const qrInput = document.getElementById('qrInput');
         const generateQrBtn = document.getElementById('generateQrBtn');
         const qrCodeImage = document.getElementById('qrCodeImage');
         const placeholderText = document.getElementById('placeholderText');
-        const qrHistoryList = document.getElementById('qrHistoryList');
-        const loadingHistory = document.getElementById('loadingHistory');
-        const userIdDisplay = document.getElementById('userIdDisplay');
         const parsedContentContainer = document.getElementById('parsedContentContainer');
         const parsedContentList = document.getElementById('parsedContentList');
-
-        // Fungsi untuk menginisialisasi Firebase dan otentikasi
-        async function initializeFirebase() {
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Menangani otentikasi
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        userIdDisplay.textContent = `ID Pengguna Anda: ${userId}`;
-                        console.log("Pengguna terotentikasi:", userId);
-                        // Setelah otentikasi, mulai mendengarkan data
-                        listenForQrInputs();
-                    } else {
-                        // Jika tidak ada token awal, masuk secara anonim
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Error menginisialisasi Firebase:", error);
-                userIdDisplay.textContent = "Error memuat pengguna.";
-            }
-        }
-
-        // Fungsi untuk menyimpan input QR ke Firestore
-        async function saveQrInput(text) {
-            if (!db || !userId) {
-                console.error("Firestore atau User ID belum siap.");
-                return;
-            }
-            try {
-                // Path koleksi untuk data publik
-                const collectionPath = `artifacts/${appId}/public/data/qr_inputs`;
-                await addDoc(collection(db, collectionPath), {
-                    text: text,
-                    timestamp: Date.now(), // Timestamp untuk pengurutan
-                    userId: userId // Menyimpan user ID yang menginput
-                });
-                console.log("Input QR berhasil disimpan.");
-            } catch (e) {
-                console.error("Error menambahkan dokumen: ", e);
-            }
-        }
-
-        // Fungsi untuk mendengarkan perubahan data dari Firestore secara real-time
-        function listenForQrInputs() {
-            if (!db) {
-                console.error("Firestore belum siap.");
-                return;
-            }
-            const collectionPath = `artifacts/${appId}/public/data/qr_inputs`;
-            // Membuat query untuk mendapatkan data
-            const q = query(collection(db, collectionPath));
-
-            onSnapshot(q, (snapshot) => {
-                qrHistoryList.innerHTML = ''; // Mengosongkan daftar sebelumnya
-                loadingHistory.classList.add('hidden'); // Sembunyikan indikator loading
-                if (snapshot.empty) {
-                    qrHistoryList.innerHTML = '<p class="text-gray-500 text-center">Belum ada riwayat input QR.</p>';
-                } else {
-                    // Mengumpulkan data dan mengurutkannya secara manual di klien
-                    const items = [];
-                    snapshot.forEach((doc) => {
-                        items.push({ id: doc.id, ...doc.data() });
-                    });
-
-                    // Mengurutkan berdasarkan timestamp secara descending (terbaru di atas)
-                    items.sort((a, b) => b.timestamp - a.timestamp); // Memperbaiki kesalahan ketik di sini
-
-                    items.forEach((item) => {
-                        const listItem = document.createElement('div');
-                        listItem.className = 'bg-white p-3 rounded-lg shadow-sm mb-2 break-words';
-                        const date = new Date(item.timestamp).toLocaleString('id-ID');
-                        listItem.innerHTML = `
-                            <p class="text-gray-800 font-medium">${item.text}</p>
-                            <p class="text-gray-500 text-xs mt-1">Oleh: ${item.userId.substring(0, 8)}... pada ${date}</p>
-                        `;
-                        qrHistoryList.appendChild(listItem);
-                    });
-                }
-            }, (error) => {
-                console.error("Error mendengarkan riwayat QR:", error);
-                qrHistoryList.innerHTML = '<p class="text-red-500 text-center">Gagal memuat riwayat.</p>';
-                loadingHistory.classList.add('hidden');
-            });
-        }
 
         // --- Fungsi Parsing Konten QR ---
         // Definisi deskripsi tag EMVCo/QRIS yang relevan
@@ -211,208 +100,10 @@
         // Deskripsi sub-tag untuk Tag 26 dan 51 (contoh untuk QRIS)
         const subTagDescriptions = {
             '26': {
-                '00': 'Globally Unique Identifier (GUID)',
-                '01': 'Payment Network Specific', // Contoh untuk merchant ID
-                '02': 'Merchant Criteria',
-                '03': 'Bill Number',
-                '04': 'Mobile Number',
-                '05': 'Store Label',
-                '06': 'Loyalty Number',
-                '07': 'Reference Label',
-                '08': 'Customer Label',
-                '09': 'Terminal Label',
-                '10': 'Purpose of Transaction',
-                '11': 'Additional Consumer Data Request',
-                '12': 'RFU for EMVCo',
-                '13': 'RFU for EMVCo',
-                '14': 'RFU for EMVCo',
-                '15': 'RFU for EMVCo',
-                '16': 'RFU for EMVCo',
-                '17': 'RFU for EMVCo',
-                '18': 'RFU for EMVCo',
-                '19': 'RFU for EMVCo',
-                '20': 'RFU for EMVCo',
-                '21': 'RFU for EMVCo',
-                '22': 'RFU for EMVCo',
-                '23': 'RFU for EMVCo',
-                '24': 'RFU for EMVCo',
-                '25': 'RFU for EMVCo',
-                '26': 'RFU for EMVCo',
-                '27': 'RFU for EMVCo',
-                '28': 'RFU for EMVCo',
-                '29': 'RFU for EMVCo',
-                '30': 'RFU for EMVCo',
-                '31': 'RFU for EMVCo',
-                '32': 'RFU for EMVCo',
-                '33': 'RFU for EMVCo',
-                '34': 'RFU for EMVCo',
-                '35': 'RFU for EMVCo',
-                '36': 'RFU for EMVCo',
-                '37': 'RFU for EMVCo',
-                '38': 'RFU for EMVCo',
-                '39': 'RFU for EMVCo',
-                '40': 'RFU for EMVCo',
-                '41': 'RFU for EMVCo',
-                '42': 'RFU for EMVCo',
-                '43': 'RFU for EMVCo',
-                '44': 'RFU for EMVCo',
-                '45': 'RFU for EMVCo',
-                '46': 'RFU for EMVCo',
-                '47': 'RFU for EMVCo',
-                '48': 'RFU for EMVCo',
-                '49': 'RFU for EMVCo',
-                '50': 'RFU for EMVCo',
-                '51': 'RFU for EMVCo',
-                '52': 'RFU for EMVCo',
-                '53': 'RFU for EMVCo',
-                '54': 'RFU for EMVCo',
-                '55': 'RFU for EMVCo',
-                '56': 'RFU for EMVCo',
-                '57': 'RFU for EMVCo',
-                '58': 'RFU for EMVCo',
-                '59': 'RFU for EMVCo',
-                '60': 'RFU for EMVCo',
-                '61': 'RFU for EMVCo',
-                '62': 'RFU for EMVCo',
-                '63': 'RFU for EMVCo',
-                '64': 'RFU for EMVCo',
-                '65': 'RFU for EMVCo',
-                '66': 'RFU for EMVCo',
-                '67': 'RFU for EMVCo',
-                '68': 'RFU for EMVCo',
-                '69': 'RFU for EMVCo',
-                '70': 'RFU for EMVCo',
-                '71': 'RFU for EMVCo',
-                '72': 'RFU for EMVCo',
-                '73': 'RFU for EMVCo',
-                '74': 'RFU for EMVCo',
-                '75': 'RFU for EMVCo',
-                '76': 'RFU for EMVCo',
-                '77': 'RFU for EMVCo',
-                '78': 'RFU for EMVCo',
-                '79': 'RFU for EMVCo',
-                '80': 'RFU for EMVCo',
-                '81': 'RFU for EMVCo',
-                '82': 'RFU for EMVCo',
-                '83': 'RFU for EMVCo',
-                '84': 'RFU for EMVCo',
-                '85': 'RFU for EMVCo',
-                '86': 'RFU for EMVCo',
-                '87': 'RFU for EMVCo',
-                '88': 'RFU for EMVCo',
-                '89': 'RFU for EMVCo',
-                '90': 'RFU for EMVCo',
-                '91': 'RFU for EMVCo',
-                '92': 'RFU for EMVCo',
-                '93': 'RFU for EMVCo',
-                '94': 'RFU for EMVCo',
-                '95': 'RFU for EMVCo',
-                '96': 'RFU for EMVCo',
-                '97': 'RFU for EMVCo',
-                '98': 'RFU for EMVCo',
-                '99': 'RFU for EMVCo',
+                '00': 'Globally Unique Identifier (GUID)', '01': 'Payment Network Specific', '02': 'Merchant Criteria', '03': 'Bill Number', '04': 'Mobile Number', '05': 'Store Label', '06': 'Loyalty Number', '07': 'Reference Label', '08': 'Customer Label', '09': 'Terminal Label', '10': 'Purpose of Transaction', '11': 'Additional Consumer Data Request', '12': 'RFU for EMVCo', '13': 'RFU for EMVCo', '14': 'RFU for EMVCo', '15': 'RFU for EMVCo', '16': 'RFU for EMVCo', '17': 'RFU for EMVCo', '18': 'RFU for EMVCo', '19': 'RFU for EMVCo', '20': 'RFU for EMVCo', '21': 'RFU for EMVCo', '22': 'RFU for EMVCo', '23': 'RFU for EMVCo', '24': 'RFU for EMVCo', '25': 'RFU for EMVCo', '26': 'RFU for EMVCo', '27': 'RFU for EMVCo', '28': 'RFU for EMVCo', '29': 'RFU for EMVCo', '30': 'RFU for EMVCo', '31': 'RFU for EMVCo', '32': 'RFU for EMVCo', '33': 'RFU for EMVCo', '34': 'RFU for EMVCo', '35': 'RFU for EMVCo', '36': 'RFU for EMVCo', '37': 'RFU for EMVCo', '38': 'RFU for EMVCo', '39': 'RFU for EMVCo', '40': 'RFU for EMVCo', '41': 'RFU for EMVCo', '42': 'RFU for EMVCo', '43': 'RFU for EMVCo', '44': 'RFU for EMVCo', '45': 'RFU for EMVCo', '46': 'RFU for EMVCo', '47': 'RFU for EMVCo', '48': 'RFU for EMVCo', '49': 'RFU for EMVCo', '50': 'RFU for EMVCo', '51': 'RFU for EMVCo', '52': 'RFU for EMVCo', '53': 'RFU for EMVCo', '54': 'RFU for EMVCo', '55': 'RFU for EMVCo', '56': 'RFU for EMVCo', '57': 'RFU for EMVCo', '58': 'RFU for EMVCo', '59': 'RFU for EMVCo', '60': 'RFU for EMVCo', '61': 'RFU for EMVCo', '62': 'RFU for EMVCo', '63': 'RFU for EMVCo', '64': 'RFU for EMVCo', '65': 'RFU for EMVCo', '66': 'RFU for EMVCo', '67': 'RFU for EMVCo', '68': 'RFU for EMVCo', '69': 'RFU for EMVCo', '70': 'RFU for EMVCo', '71': 'RFU for EMVCo', '72': 'RFU for EMVCo', '73': 'RFU for EMVCo', '74': 'RFU for EMVCo', '75': 'RFU for EMVCo', '76': 'RFU for EMVCo', '77': 'RFU for EMVCo', '78': 'RFU for EMVCo', '79': 'RFU for EMVCo', '80': 'RFU for EMVCo', '81': 'RFU for EMVCo', '82': 'RFU for EMVCo', '83': 'RFU for EMVCo', '84': 'RFU for EMVCo', '85': 'RFU for EMVCo', '86': 'RFU for EMVCo', '87': 'RFU for EMVCo', '88': 'RFU for EMVCo', '89': 'RFU for EMVCo', '90': 'RFU for EMVCo', '91': 'RFU for EMVCo', '92': 'RFU for EMVCo', '93': 'RFU for EMVCo', '94': 'RFU for EMVCo', '95': 'RFU for EMVCo', '96': 'RFU for EMVCo', '97': 'RFU for EMVCo', '98': 'RFU for EMVCo', '99': 'RFU for EMVCo',
             },
             '51': {
-                '00': 'Globally Unique Identifier (GUID)',
-                '01': 'QRIS Data Element', // Contoh untuk merchant ID QRIS
-                '02': 'QRIS Data Element',
-                '03': 'QRIS Data Element',
-                '04': 'QRIS Data Element',
-                '05': 'QRIS Data Element',
-                '06': 'QRIS Data Element',
-                '07': 'QRIS Data Element',
-                '08': 'QRIS Data Element',
-                '09': 'QRIS Data Element',
-                '10': 'QRIS Data Element',
-                '11': 'QRIS Data Element',
-                '12': 'QRIS Data Element',
-                '13': 'QRIS Data Element',
-                '14': 'QRIS Data Element',
-                '15': 'QRIS Data Element',
-                '16': 'QRIS Data Element',
-                '17': 'QRIS Data Element',
-                '18': 'QRIS Data Element',
-                '19': 'QRIS Data Element',
-                '20': 'QRIS Data Element',
-                '21': 'QRIS Data Element',
-                '22': 'QRIS Data Element',
-                '23': 'QRIS Data Element',
-                '24': 'QRIS Data Element',
-                '25': 'QRIS Data Element',
-                '26': 'QRIS Data Element',
-                '27': 'QRIS Data Element',
-                '28': 'QRIS Data Element',
-                '29': 'QRIS Data Element',
-                '30': 'QRIS Data Element',
-                '31': 'QRIS Data Element',
-                '32': 'QRIS Data Element',
-                '33': 'QRIS Data Element',
-                '34': 'QRIS Data Element',
-                '35': 'QRIS Data Element',
-                '36': 'QRIS Data Element',
-                '37': 'QRIS Data Element',
-                '38': 'QRIS Data Element',
-                '39': 'QRIS Data Element',
-                '40': 'QRIS Data Element',
-                '41': 'QRIS Data Element',
-                '42': 'QRIS Data Element',
-                '43': 'QRIS Data Element',
-                '44': 'QRIS Data Element',
-                '45': 'QRIS Data Element',
-                '46': 'QRIS Data Element',
-                '47': 'QRIS Data Element',
-                '48': 'QRIS Data Element',
-                '49': 'QRIS Data Element',
-                '50': 'QRIS Data Element',
-                '51': 'QRIS Data Element',
-                '52': 'QRIS Data Element',
-                '53': 'QRIS Data Element',
-                '54': 'QRIS Data Element',
-                '55': 'QRIS Data Element',
-                '56': 'QRIS Data Element',
-                '57': 'QRIS Data Element',
-                '58': 'QRIS Data Element',
-                '59': 'QRIS Data Element',
-                '60': 'QRIS Data Element',
-                '61': 'QRIS Data Element',
-                '62': 'QRIS Data Element',
-                '63': 'QRIS Data Element',
-                '64': 'QRIS Data Element',
-                '65': 'QRIS Data Element',
-                '66': 'QRIS Data Element',
-                '67': 'QRIS Data Element',
-                '68': 'QRIS Data Element',
-                '69': 'QRIS Data Element',
-                '70': 'QRIS Data Element',
-                '71': 'QRIS Data Element',
-                '72': 'QRIS Data Element',
-                '73': 'QRIS Data Element',
-                '74': 'QRIS Data Element',
-                '75': 'QRIS Data Element',
-                '76': 'QRIS Data Element',
-                '77': 'QRIS Data Element',
-                '78': 'QRIS Data Element',
-                '79': 'QRIS Data Element',
-                '80': 'QRIS Data Element',
-                '81': 'QRIS Data Element',
-                '82': 'QRIS Data Element',
-                '83': 'QRIS Data Element',
-                '84': 'QRIS Data Element',
-                '85': 'QRIS Data Element',
-                '86': 'QRIS Data Element',
-                '87': 'QRIS Data Element',
-                '88': 'QRIS Data Element',
-                '89': 'QRIS Data Element',
-                '90': 'QRIS Data Element',
-                '91': 'QRIS Data Element',
-                '92': 'QRIS Data Element',
-                '93': 'QRIS Data Element',
-                '94': 'QRIS Data Element',
-                '95': 'QRIS Data Element',
-                '96': 'QRIS Data Element',
-                '97': 'QRIS Data Element',
-                '98': 'QRIS Data Element',
-                '99': 'QRIS Data Element',
+                '00': 'Globally Unique Identifier (GUID)', '01': 'QRIS Data Element', '02': 'QRIS Data Element', '03': 'QRIS Data Element', '04': 'QRIS Data Element', '05': 'QRIS Data Element', '06': 'QRIS Data Element', '07': 'QRIS Data Element', '08': 'QRIS Data Element', '09': 'QRIS Data Element', '10': 'QRIS Data Element', '11': 'QRIS Data Element', '12': 'QRIS Data Element', '13': 'QRIS Data Element', '14': 'QRIS Data Element', '15': 'QRIS Data Element', '16': 'QRIS Data Element', '17': 'QRIS Data Element', '18': 'QRIS Data Element', '19': 'QRIS Data Element', '20': 'QRIS Data Element', '21': 'QRIS Data Element', '22': 'QRIS Data Element', '23': 'QRIS Data Element', '24': 'QRIS Data Element', '25': 'QRIS Data Element', '26': 'QRIS Data Element', '27': 'QRIS Data Element', '28': 'QRIS Data Element', '29': 'QRIS Data Element', '30': 'QRIS Data Element', '31': 'QRIS Data Element', '32': 'QRIS Data Element', '33': 'QRIS Data Element', '34': 'QRIS Data Element', '35': 'QRIS Data Element', '36': 'QRIS Data Element', '37': 'QRIS Data Element', '38': 'QRIS Data Element', '39': 'QRIS Data Element', '40': 'QRIS Data Element', '41': 'QRIS Data Element', '42': 'QRIS Data Element', '43': 'QRIS Data Element', '44': 'QRIS Data Element', '45': 'QRIS Data Element', '46': 'QRIS Data Element', '47': 'QRIS Data Element', '48': 'QRIS Data Element', '49': 'QRIS Data Element', '50': 'QRIS Data Element', '51': 'QRIS Data Element', '52': 'QRIS Data Element', '53': 'QRIS Data Element', '54': 'QRIS Data Element', '55': 'QRIS Data Element', '56': 'QRIS Data Element', '57': 'QRIS Data Element', '58': 'QRIS Data Element', '59': 'QRIS Data Element', '60': 'QRIS Data Element', '61': 'QRIS Data Element', '62': 'QRIS Data Element', '63': 'QRIS Data Element', '64': 'QRIS Data Element', '65': 'QRIS Data Element', '66': 'QRIS Data Element', '67': 'QRIS Data Element', '68': 'QRIS Data Element', '69': 'QRIS Data Element', '70': 'QRIS Data Element', '71': 'QRIS Data Element', '72': 'QRIS Data Element', '73': 'QRIS Data Element', '74': 'QRIS Data Element', '75': 'QRIS Data Element', '76': 'QRIS Data Element', '77': 'QRIS Data Element', '78': 'QRIS Data Element', '79': 'QRIS Data Element', '80': 'QRIS Data Element', '81': 'QRIS Data Element', '82': 'QRIS Data Element', '83': 'QRIS Data Element', '84': 'QRIS Data Element', '85': 'QRIS Data Element', '86': 'QRIS Data Element', '87': 'QRIS Data Element', '88': 'QRIS Data Element', '89': 'QRIS Data Element', '90': 'QRIS Data Element', '91': 'QRIS Data Element', '92': 'QRIS Data Element', '93': 'QRIS Data Element', '94': 'QRIS Data Element', '95': 'QRIS Data Element', '96': 'QRIS Data Element', '97': 'QRIS Data Element', '98': 'QRIS Data Element', '99': 'QRIS Data Element',
             }
         };
 
@@ -477,7 +168,12 @@
          * @param {number} level Level indentasi untuk tampilan.
          */
         function displayParsedContent(data, parentElement, level = 0) {
-            const indent = '  '.repeat(level); // Indentasi untuk sub-tag
+            // Check if data is empty or null, if so, display a message
+            if (!data || data.length === 0) {
+                parentElement.innerHTML = '<p class="text-gray-500">Tidak dapat mengurai konten QR sebagai format TLV yang dikenal. Pastikan format input benar.</p>';
+                return;
+            }
+
             data.forEach(item => {
                 const p = document.createElement('p');
                 p.className = `mb-1 ${level > 0 ? 'ml-4' : ''}`; // Indentasi visual
@@ -495,34 +191,30 @@
             });
         }
 
+
         // Event listener untuk tombol Generate QR
-        generateQrBtn.addEventListener('click', async () => {
-            const inputText = qrInput.value.trim();
+        generateQrBtn.addEventListener('click', () => {
+            const inputText = qrInput.value.trim(); // Mengambil teks dari input dan menghapus spasi di awal/akhir
 
             if (inputText) {
+                // Jika input tidak kosong, buat URL QR Code
+                // Menggunakan API qrserver.com untuk menghasilkan QR Code
                 const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(inputText)}`;
+
+                // Menetapkan URL ke elemen gambar
                 qrCodeImage.src = qrCodeUrl;
                 qrCodeImage.alt = `Kode QR untuk: ${inputText}`;
-                qrCodeImage.classList.remove('hidden');
-                placeholderText.classList.add('hidden');
-
-                // Simpan input ke Firestore
-                await saveQrInput(inputText);
-                qrInput.value = ''; // Kosongkan input setelah disimpan
+                qrCodeImage.classList.remove('hidden'); // Menampilkan gambar
+                placeholderText.classList.add('hidden'); // Menyembunyikan teks placeholder
 
                 // Parse dan tampilkan konten QR
                 parsedContentList.innerHTML = ''; // Bersihkan konten sebelumnya
                 const parsedData = parseTLV(inputText);
-                if (parsedData.length > 0) {
-                    displayParsedContent(parsedData, parsedContentList);
-                    parsedContentContainer.classList.remove('hidden'); // Tampilkan container
-                } else {
-                    // Jika parsing tidak menghasilkan data, tampilkan pesan ini
-                    parsedContentList.innerHTML = '<p class="text-gray-500">Tidak dapat mengurai/menganalisis konten QR sebagai format TLV yang dikenal. Pastikan format input benar.</p>';
-                    parsedContentContainer.classList.remove('hidden'); // Tampilkan container dengan pesan
-                }
+                displayParsedContent(parsedData, parsedContentList); // Panggil fungsi display tanpa memeriksa panjang di sini
+                parsedContentContainer.classList.remove('hidden'); // Selalu tampilkan container setelah generate
 
             } else {
+                // Jika input kosong, sembunyikan gambar dan tampilkan placeholder
                 qrCodeImage.classList.add('hidden');
                 placeholderText.classList.remove('hidden');
                 placeholderText.textContent = 'Silakan masukkan teks untuk menghasilkan Kode QR.';
@@ -530,9 +222,6 @@
                 parsedContentList.innerHTML = ''; // Kosongkan konten parsing
             }
         });
-
-        // Inisialisasi Firebase saat halaman dimuat
-        initializeFirebase();
     </script>
 </body>
 </html>
