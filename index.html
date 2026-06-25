@@ -3,184 +3,391 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR Code Generator</title>
+  <title>QR Code Generator & QRIS Decoder</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body {
       font-family: 'Inter', sans-serif;
     }
+    .tab-button {
+      transition: all 0.3s ease;
+    }
+    .tab-button.active {
+      @apply border-b-2 border-green-600 text-green-600;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .validator-row {
+      @apply flex items-center gap-2 py-2 px-3 rounded border border-gray-200 mb-2;
+    }
+    .validator-status-pass {
+      @apply text-green-600;
+    }
+    .validator-status-fail {
+      @apply text-red-600;
+    }
+    .validator-status-warning {
+      @apply text-yellow-600;
+    }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-  <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
-    <h1 class="text-3xl font-bold mb-6 text-gray-800">QR Code Generator</h1>
+<body class="bg-gray-100 min-h-screen p-4">
+  <div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+      <h1 class="text-4xl font-bold text-gray-800 mb-2">QR Code Suite</h1>
+      <p class="text-gray-600">Generator & QRIS Decoder dengan EMVCo + QRIS BI/ASPI Validator</p>
+    </div>
 
-    <!-- Input Section -->
-    <div class="mb-4">
-      <input
-        id="qrInput"
-        type="text"
-        placeholder="Masukkan teks atau URL (misal: https://google.com atau data TLV)"
-        class="w-full p-3 border border-gray-300 rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-200 ease-in-out"
-        aria-label="Input untuk QR Code"
-      />
-      <button
-        id="generateQrBtn"
-        class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-      >
-        Hasilkan QR Code
+    <!-- Tabs Navigation -->
+    <div class="bg-white rounded-t-xl shadow-lg border-b border-gray-200 flex">
+      <button class="tab-button active px-6 py-4 font-semibold text-gray-700 hover:text-green-600 focus:outline-none" data-tab="generator">
+        <i class="fas fa-qrcode mr-2"></i>Generator
+      </button>
+      <button class="tab-button px-6 py-4 font-semibold text-gray-700 hover:text-green-600 focus:outline-none" data-tab="decoder">
+        <i class="fas fa-barcode mr-2"></i>Decoder & Validator
       </button>
     </div>
 
-    <!-- QR Code Display Section -->
-    <div id="qrCodeContainer" class="mt-8 flex flex-col items-center justify-center">
-      <div id="qrLoadingIndicator" class="hidden animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-green-200 border-t-green-600 mb-4" role="status" aria-label="Loading QR Code">
-        <span class="sr-only">Memuat...</span>
+    <!-- TAB 1: GENERATOR -->
+    <div id="generator" class="tab-content active bg-white rounded-b-xl shadow-lg p-8 mb-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Input Section -->
+        <div>
+          <h2 class="text-2xl font-bold mb-4 text-gray-800">Generate QR Code</h2>
+          
+          <div class="mb-6">
+            <label class="block text-gray-700 font-semibold mb-2">Masukkan Data:</label>
+            <textarea
+              id="qrInput"
+              placeholder="Masukkan teks, URL, atau data TLV (misal: 00020126...)"
+              class="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-200 h-32 resize-none"
+            ></textarea>
+          </div>
+
+          <div class="mb-6">
+            <label class="block text-gray-700 font-semibold mb-2">Format Output:</label>
+            <select id="fileTypeSelect" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="gif">GIF</option>
+              <option value="svg">SVG</option>
+            </select>
+          </div>
+
+          <button
+            id="generateQrBtn"
+            class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 shadow-md hover:shadow-lg font-semibold"
+          >
+            <i class="fas fa-magic mr-2"></i>Hasilkan QR Code
+          </button>
+        </div>
+
+        <!-- QR Preview Section -->
+        <div>
+          <h2 class="text-2xl font-bold mb-4 text-gray-800">Preview</h2>
+          
+          <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center min-h-80">
+            <div id="qrLoadingIndicator" class="hidden text-center">
+              <i class="fas fa-spinner fa-spin text-green-600 text-4xl mb-2"></i>
+              <p class="text-gray-600">Generating...</p>
+            </div>
+            <img id="qrCodeImage" src="" alt="Generated QR Code" class="hidden max-w-xs rounded-lg border-2 border-gray-300 p-2" />
+            <div id="placeholderText" class="text-center">
+              <i class="fas fa-qrcode text-6xl text-gray-300 mb-2"></i>
+              <p class="text-gray-500 text-lg">QR Code akan muncul di sini</p>
+            </div>
+          </div>
+
+          <!-- Download Section -->
+          <div id="downloadOptions" class="hidden mt-4">
+            <button
+              id="downloadQrBtn"
+              class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 shadow-md hover:shadow-lg font-semibold"
+            >
+              <i class="fas fa-download mr-2"></i>Unduh QR Code
+            </button>
+          </div>
+        </div>
       </div>
-      <img id="qrCodeImage" src="" alt="Kode QR yang dihasilkan" class="hidden mx-auto w-56 h-56 rounded-lg border border-gray-200 p-1" />
-      <p id="placeholderText" class="text-gray-500 mt-4 text-base">QR Code akan muncul di sini</p>
     </div>
 
-    <!-- Download Options Section -->
-    <div id="downloadOptions" class="mt-6 hidden flex flex-col items-center">
-      <div class="mb-4 w-full">
-        <label for="fileTypeSelect" class="block text-gray-700 text-sm font-medium mb-2">Pilih Jenis File:</label>
-        <select id="fileTypeSelect" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="png">PNG</option>
-          <option value="jpeg">JPEG</option>
-          <option value="gif">GIF</option>
-          <option value="svg">SVG</option>
-        </select>
-      </div>
-      <button
-        id="downloadQrBtn"
-        class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-      >
-        Unduh QR Code
-      </button>
-    </div>
+    <!-- TAB 2: DECODER & VALIDATOR -->
+    <div id="decoder" class="tab-content bg-white rounded-b-xl shadow-lg p-8 mb-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Input Section -->
+        <div class="lg:col-span-1 bg-gray-50 p-6 rounded-lg">
+          <h2 class="text-2xl font-bold mb-6 text-gray-800">Input QR</h2>
+          
+          <!-- Input Method Tabs -->
+          <div class="flex gap-2 mb-4">
+            <button class="input-method-btn active flex-1 py-2 px-3 rounded bg-green-600 text-white text-sm font-semibold" data-method="image">
+              <i class="fas fa-image mr-1"></i>Gambar
+            </button>
+            <button class="input-method-btn flex-1 py-2 px-3 rounded bg-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-400" data-method="text">
+              <i class="fas fa-keyboard mr-1"></i>Raw String
+            </button>
+          </div>
 
-    <!-- Parsed Content Section -->
-    <div id="parsedContentContainer" class="mt-8 hidden text-left bg-gray-50 p-6 rounded-xl border border-gray-200">
-      <h2 class="text-xl font-semibold mb-4 text-gray-700">Detail Konten (TLV format):</h2>
-      <div id="parsedContentList" class="text-sm text-gray-700 overflow-y-auto max-h-80 pr-2">
-        <!-- Parsed content will be injected here -->
+          <!-- Image Upload -->
+          <div id="imageInput" class="input-method-content">
+            <div class="border-2 border-dashed border-gray-400 rounded-lg p-6 text-center mb-4 cursor-pointer hover:border-green-600 hover:bg-green-50 transition" id="imageDropZone">
+              <input type="file" id="qrImageFile" accept="image/*" class="hidden" />
+              <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+              <p class="text-gray-600 font-semibold">Drag gambar QR di sini</p>
+              <p class="text-gray-500 text-sm">atau klik untuk upload</p>
+            </div>
+          </div>
+
+          <!-- Raw String Input -->
+          <div id="textInput" class="input-method-content hidden">
+            <textarea
+              id="rawQrString"
+              placeholder="Paste raw QR string di sini...&#10;Contoh: 00020126580014ID.CO.BRI.BRIVA0131..."
+              class="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 h-40 resize-none font-mono text-xs"
+            ></textarea>
+            <button id="decodeRawBtn" class="w-full mt-4 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition font-semibold">
+              <i class="fas fa-play mr-2"></i>Decode Raw String
+            </button>
+          </div>
+
+          <!-- Preview -->
+          <div id="imagePreview" class="mt-4 hidden">
+            <img id="previewImage" src="" alt="Preview" class="w-full rounded-lg border-2 border-gray-300" />
+          </div>
+        </div>
+
+        <!-- Parsed Content & Validator Section -->
+        <div class="lg:col-span-2">
+          <h2 class="text-2xl font-bold mb-6 text-gray-800">Validator & Parser</h2>
+          
+          <!-- Decoded Data Raw -->
+          <div id="decodedRawContainer" class="hidden mb-6 bg-blue-50 p-4 rounded-lg border-l-4 border-blue-600">
+            <h3 class="font-semibold text-blue-900 mb-2"><i class="fas fa-code mr-2"></i>Raw QR String:</h3>
+            <div id="decodedRawValue" class="bg-white p-3 rounded font-mono text-xs break-words border border-gray-300 max-h-40 overflow-y-auto"></div>
+          </div>
+
+          <!-- Validator Table -->
+          <div id="validatorContainer" class="hidden">
+            <h3 class="font-semibold text-gray-800 mb-3 flex items-center">
+              <i class="fas fa-check-circle mr-2"></i>EMVCo QRIS Validator
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-200 sticky top-0">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-semibold">Tag</th>
+                    <th class="px-3 py-2 text-left font-semibold">Deskripsi</th>
+                    <th class="px-3 py-2 text-left font-semibold">Value</th>
+                    <th class="px-3 py-2 text-left font-semibold">ISO Std</th>
+                    <th class="px-3 py-2 text-center font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="validatorTableBody" class="divide-y divide-gray-200">
+                  <!-- Dinamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Parsed Content (Nested) -->
+          <div id="parsedContentContainer" class="hidden mt-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <h3 class="font-semibold text-gray-800 mb-3"><i class="fas fa-list mr-2"></i>Detail Konten (TLV Format):</h3>
+            <div id="parsedContentList" class="text-sm space-y-2 max-h-96 overflow-y-auto"></div>
+          </div>
+
+          <!-- Summary Stats -->
+          <div id="summaryStats" class="hidden mt-6 grid grid-cols-3 gap-4">
+            <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-600">
+              <p class="text-gray-600 text-sm">Valid Fields</p>
+              <p id="validCount" class="text-3xl font-bold text-green-600">0</p>
+            </div>
+            <div class="bg-red-50 p-4 rounded-lg border-l-4 border-red-600">
+              <p class="text-gray-600 text-sm">Invalid Fields</p>
+              <p id="invalidCount" class="text-3xl font-bold text-red-600">0</p>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-600">
+              <p class="text-gray-600 text-sm">Warnings</p>
+              <p id="warningCount" class="text-3xl font-bold text-yellow-600">0</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
+  </div>
 
-    <!-- Message Box for alerts -->
-    <div id="messageBox" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
-      <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm mx-auto">
-        <p id="messageBoxText" class="text-lg font-medium text-gray-800 mb-4"></p>
-        <button id="messageBoxCloseBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 ease-in-out">Tutup</button>
-      </div>
+  <!-- Message Box -->
+  <div id="messageBox" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm mx-auto">
+      <p id="messageBoxText" class="text-lg font-medium text-gray-800 mb-4"></p>
+      <button id="messageBoxCloseBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-semibold">Close</button>
     </div>
-
   </div>
 
   <script>
-    // Get references to DOM elements
+    // ============ EMVCo QRIS Specifications ============
+    const QRIS_SPEC = {
+      '00': { name: 'Payload Format Indicator', type: 'string', minLen: 2, maxLen: 2, description: 'Should be "01"' },
+      '01': { name: 'Point of Initiation Method', type: 'string', minLen: 1, maxLen: 1, description: '11=Static, 12=Dynamic' },
+      '26': { name: 'Merchant Account Information', type: 'template', minLen: 1, maxLen: 99 },
+      '51': { name: 'QRIS Merchant Information', type: 'template', minLen: 1, maxLen: 99 },
+      '52': { name: 'Merchant Category Code', type: 'string', minLen: 4, maxLen: 4, description: 'ISO/IEC 18245' },
+      '53': { name: 'Currency Code', type: 'string', minLen: 3, maxLen: 3, description: 'ISO 4217' },
+      '54': { name: 'Transaction Amount', type: 'string', minLen: 0, maxLen: 13, description: 'Numeric, max 13 digits' },
+      '55': { name: 'Tip or Convenience Indicator', type: 'string', minLen: 1, maxLen: 1, description: '01=No, 02=Fixed, 03=%' },
+      '56': { name: 'Value of Convenience Fee Fixed', type: 'string', minLen: 0, maxLen: 13 },
+      '57': { name: 'Value of Convenience Fee Percentage', type: 'string', minLen: 0, maxLen: 5 },
+      '58': { name: 'Country Code', type: 'string', minLen: 2, maxLen: 2, description: 'ISO 3166-1 alpha-2' },
+      '59': { name: 'Merchant Name', type: 'string', minLen: 1, maxLen: 25 },
+      '60': { name: 'Merchant City', type: 'string', minLen: 1, maxLen: 15 },
+      '61': { name: 'Postal Code', type: 'string', minLen: 0, maxLen: 10 },
+      '62': { name: 'Additional Data Field', type: 'template', minLen: 1, maxLen: 99 },
+      '63': { name: 'CRC Checksum', type: 'string', minLen: 4, maxLen: 4, description: 'ISO/IEC 13239' },
+      '64': { name: 'Merchant Information Language', type: 'template', minLen: 1, maxLen: 99 },
+      '99': { name: 'Unreserved Templates', type: 'template', minLen: 1, maxLen: 99 },
+    };
+
+    // ============ DOM Elements ============
     const qrInput = document.getElementById('qrInput');
     const generateQrBtn = document.getElementById('generateQrBtn');
     const qrCodeImage = document.getElementById('qrCodeImage');
     const placeholderText = document.getElementById('placeholderText');
     const qrLoadingIndicator = document.getElementById('qrLoadingIndicator');
-    const parsedContentContainer = document.getElementById('parsedContentContainer');
-    const parsedContentList = document.getElementById('parsedContentList');
+    const downloadOptions = document.getElementById('downloadOptions');
+    const fileTypeSelect = document.getElementById('fileTypeSelect');
+    const downloadQrBtn = document.getElementById('downloadQrBtn');
     const messageBox = document.getElementById('messageBox');
     const messageBoxText = document.getElementById('messageBoxText');
     const messageBoxCloseBtn = document.getElementById('messageBoxCloseBtn');
-    const downloadOptions = document.getElementById('downloadOptions'); // New
-    const fileTypeSelect = document.getElementById('fileTypeSelect');   // New
-    const downloadQrBtn = document.getElementById('downloadQrBtn');     // New
 
-    // Define descriptions for common EMVCo/QRIS TLV tags
-    const tagDescriptions = {
-      '00': 'Payload Format Indicator',
-      '01': 'Point of Initiation Method',
-      '02': 'Visa Credit', // Example for Merchant Account Information (MAI)
-      '03': 'Mastercard Credit', // Example for MAI
-      '04': 'EMVCo Reserved', // Example for MAI
-      '05': 'QRIS Merchant Criteria', // Example for MAI
-      '06': 'QRIS Merchant ID', // Example for MAI
-      '07': 'QRIS Terminal ID', // Example for MAI
-      '08': 'QRIS Merchant Name', // Example for MAI
-      '09': 'QRIS City', // Example for MAI
-      '10': 'QRIS Postal Code', // Example for MAI
-      '11': 'QRIS Country', // Example for MAI
-      '12': 'QRIS Transaction Type', // Example for MAI
-      '13': 'QRIS Reference Label', // Example for MAI
-      '14': 'QRIS Consumer ID', // Example for MAI
-      '15': 'QRIS Bill Number', // Example for MAI
-      '16': 'QRIS Mobile Number', // Example for MAI
-      '17': 'QRIS Store Label', // Example for MAI
-      '18': 'QRIS Loyalty Number', // Example for MAI
-      '19': 'QRIS Customer Label', // Example for MAI
-      '20': 'QRIS Purpose of Transaction', // Example for MAI
-      '21': 'QRIS Additional Consumer Data', // Example for MAI
-      '22': 'QRIS Payment Instrument Type', // Example for MAI
-      '23': 'QRIS Payment Instrument ID', // Example for MAI
-      '24': 'QRIS Payment Instrument Expiry', // Example for MAI
-      '25': 'QRIS Payment Instrument Holder Name', // Example for MAI
-      '26': 'Merchant Account Information (Template)',
-      '51': 'QRIS Merchant Information (Template)',
-      '52': 'Merchant Category Code',
-      '53': 'Currency Code (ISO 4217)',
-      '54': 'Transaction Amount',
-      '55': 'Tip or Convenience Indicator',
-      '56': 'Value of Convenience Fee Fixed',
-      '57': 'Value of Convenience Fee Percentage',
-      '58': 'Country Code (ISO 3166-1 alpha-2)',
-      '59': 'Merchant Name',
-      '60': 'Merchant City',
-      '61': 'Postal Code',
-      '62': 'Additional Data Field (Template)',
-      '63': 'CRC (Cyclic Redundancy Check)',
-      '64': 'Merchant Information Language (Template)',
-      '65': 'RFU for EMVCo', // Reserved for Future Use
-      '66': 'RFU for EMVCo',
-      '67': 'RFU for EMVCo',
-      '68': 'RFU for EMVCo',
-      '69': 'RFU for EMVCo',
-      '70': 'RFU for EMVCo',
-      '71': 'RFU for EMVCo',
-      '72': 'RFU for EMVCo',
-      '73': 'RFU for EMVCo',
-      '74': 'RFU for EMVCo',
-      '75': 'RFU for EMVCo',
-      '76': 'RFU for EMVCo',
-      '77': 'RFU for EMVCo',
-      '78': 'RFU for EMVCo',
-      '79': 'RFU for EMVCo',
-      '80': 'RFU for EMVCo',
-      '81': 'RFU for EMVCo',
-      '82': 'RFU for EMVCo',
-      '83': 'RFU for EMVCo',
-      '84': 'RFU for EMVCo',
-      '85': 'Merchant Information - Proprietary',
-      '99': 'Unreserved Templates',
-    };
+    // Decoder Elements
+    const imageDropZone = document.getElementById('imageDropZone');
+    const qrImageFile = document.getElementById('qrImageFile');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImage = document.getElementById('previewImage');
+    const imageInput = document.getElementById('imageInput');
+    const textInput = document.getElementById('textInput');
+    const rawQrString = document.getElementById('rawQrString');
+    const decodeRawBtn = document.getElementById('decodeRawBtn');
+    const decodedRawContainer = document.getElementById('decodedRawContainer');
+    const decodedRawValue = document.getElementById('decodedRawValue');
+    const validatorContainer = document.getElementById('validatorContainer');
+    const validatorTableBody = document.getElementById('validatorTableBody');
+    const parsedContentContainer = document.getElementById('parsedContentContainer');
+    const parsedContentList = document.getElementById('parsedContentList');
+    const summaryStats = document.getElementById('summaryStats');
 
+    // ============ Tab Navigation ============
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+        
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active', 'border-b-2', 'border-green-600', 'text-green-600'));
+        btn.classList.add('active', 'border-b-2', 'border-green-600', 'text-green-600');
+        
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+      });
+    });
 
-    /**
-     * Shows a custom message box instead of alert().
-     * @param {string} message - The message to display.
-     */
+    // ============ Input Method Selection ============
+    document.querySelectorAll('.input-method-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const method = btn.dataset.method;
+        
+        document.querySelectorAll('.input-method-btn').forEach(b => {
+          b.classList.remove('bg-green-600', 'text-white');
+          b.classList.add('bg-gray-300', 'text-gray-700');
+        });
+        btn.classList.remove('bg-gray-300', 'text-gray-700');
+        btn.classList.add('bg-green-600', 'text-white');
+        
+        document.querySelectorAll('.input-method-content').forEach(content => content.classList.add('hidden'));
+        document.getElementById(method + 'Input').classList.remove('hidden');
+      });
+    });
+
+    // ============ Message Box ============
     function showMessageBox(message) {
       messageBoxText.textContent = message;
       messageBox.classList.remove('hidden');
     }
 
-    // Close button for the message box
     messageBoxCloseBtn.addEventListener('click', () => {
       messageBox.classList.add('hidden');
     });
 
+    // ============ GENERATOR FUNCTIONS ============
+    async function generateQrCode() {
+      const input = qrInput.value.trim();
+
+      qrCodeImage.classList.add('hidden');
+      qrLoadingIndicator.classList.remove('hidden');
+      placeholderText.classList.add('hidden');
+      downloadOptions.classList.add('hidden');
+
+      if (!input) {
+        showMessageBox('Mohon masukkan teks atau URL untuk menghasilkan QR Code.');
+        qrLoadingIndicator.classList.add('hidden');
+        placeholderText.classList.remove('hidden');
+        return;
+      }
+
+      const selectedFileType = fileTypeSelect.value;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(input)}&format=${selectedFileType}`;
+      qrCodeImage.src = qrUrl;
+
+      await new Promise((resolve) => {
+        qrCodeImage.onload = () => {
+          qrLoadingIndicator.classList.add('hidden');
+          qrCodeImage.classList.remove('hidden');
+          downloadOptions.classList.remove('hidden');
+          resolve();
+        };
+        qrCodeImage.onerror = () => {
+          qrLoadingIndicator.classList.add('hidden');
+          showMessageBox('Gagal memuat QR Code. Pastikan koneksi internet Anda stabil.');
+          placeholderText.classList.remove('hidden');
+          resolve();
+        };
+      });
+    }
+
+    function downloadQrCode() {
+      const input = qrInput.value.trim();
+      if (!input) {
+        showMessageBox('Tidak ada QR Code untuk diunduh.');
+        return;
+      }
+
+      const selectedFileType = fileTypeSelect.value;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(input)}&format=${selectedFileType}`;
+
+      const link = document.createElement('a');
+      link.href = qrUrl;
+      link.download = `qrcode_${Date.now()}.${selectedFileType}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    generateQrBtn.addEventListener('click', generateQrCode);
+    qrInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') generateQrCode();
+    });
+    downloadQrBtn.addEventListener('click', downloadQrCode);
+
+    // ============ DECODER FUNCTIONS ============
+    
     /**
-     * Parses a TLV (Tag-Length-Value) string recursively.
-     * @param {string} tlvString - The TLV string to parse.
-     * @returns {Array<Object>} An array of parsed TLV objects.
+     * Parse TLV data recursively
      */
     function parseTLV(tlvString) {
       const result = [];
@@ -190,173 +397,264 @@
         const lengthStr = tlvString.slice(i + 2, i + 4);
         const len = parseInt(lengthStr, 10);
 
-        // Basic validation for length and remaining string
         if (isNaN(len) || len < 0 || (i + 4 + len) > tlvString.length) {
-          console.error(`Error parsing TLV: Invalid length or string truncated at index ${i}. Tag: ${tag}, Length String: ${lengthStr}`);
-          // Attempt to recover by skipping this segment, or stop parsing
-          showMessageBox(`Error parsing TLV: Invalid length or malformed data at tag ${tag}. Parsing stopped.`);
           break;
         }
 
         const value = tlvString.slice(i + 4, i + 4 + len);
         i += 4 + len;
 
-        const description = tagDescriptions[tag] || 'Tidak diketahui';
+        const spec = QRIS_SPEC[tag] || {};
         let children = [];
 
-        // Recursively parse known template tags
         if (['26', '51', '62', '64', '85', '99'].includes(tag)) {
           children = parseTLV(value);
         }
 
-        result.push({ tag, length: len, value, description, children });
+        result.push({ 
+          tag, 
+          length: len, 
+          value, 
+          name: spec.name || 'Unknown', 
+          type: spec.type || 'string',
+          minLen: spec.minLen,
+          maxLen: spec.maxLen,
+          description: spec.description,
+          children 
+        });
       }
       return result;
     }
 
     /**
-     * Displays the parsed TLV content in a structured way.
-     * @param {Array<Object>} data - The array of parsed TLV objects.
-     * @param {HTMLElement} parentElement - The DOM element to append the content to.
-     * @param {number} level - The current nesting level for indentation.
+     * Validate a single TLV field
+     */
+    function validateField(item) {
+      const spec = QRIS_SPEC[item.tag];
+      if (!spec) return { status: 'warning', message: 'Unknown tag' };
+
+      const len = item.value.length;
+      
+      if (len < spec.minLen) {
+        return { status: 'fail', message: `Too short (min: ${spec.minLen})`, expected: `${spec.minLen}-${spec.maxLen}` };
+      }
+      if (len > spec.maxLen) {
+        return { status: 'fail', message: `Too long (max: ${spec.maxLen})`, expected: `${spec.minLen}-${spec.maxLen}` };
+      }
+
+      // Additional validations
+      if (item.tag === '00' && item.value !== '01') {
+        return { status: 'fail', message: 'Should be "01"', expected: '"01"' };
+      }
+      if (item.tag === '53' && item.value !== '360') {
+        return { status: 'warning', message: 'Non-IDR currency', expected: '"360" (IDR)' };
+      }
+      if (item.tag === '58' && item.value !== 'ID') {
+        return { status: 'warning', message: 'Non-Indonesian country', expected: '"ID"' };
+      }
+
+      return { status: 'pass', message: 'Valid', expected: `${spec.minLen}-${spec.maxLen}` };
+    }
+
+    /**
+     * Display validator table
+     */
+    function displayValidator(data) {
+      validatorTableBody.innerHTML = '';
+      let validCount = 0, invalidCount = 0, warningCount = 0;
+
+      function addRow(item, level = 0) {
+        const validation = validateField(item);
+        const spec = QRIS_SPEC[item.tag];
+
+        const row = document.createElement('tr');
+        row.className = level > 0 ? 'bg-gray-50' : '';
+        row.innerHTML = `
+          <td class="px-3 py-2 font-mono font-bold">${item.tag}</td>
+          <td class="px-3 py-2 text-xs"><strong>${item.name}</strong></td>
+          <td class="px-3 py-2 font-mono text-xs break-words max-w-xs">${item.value}</td>
+          <td class="px-3 py-2 text-xs">
+            <div class="font-semibold">${validation.expected}</div>
+            <div class="text-gray-500 text-xs">${spec?.description || ''}</div>
+          </td>
+          <td class="px-3 py-2 text-center">
+            ${validation.status === 'pass' ? '<i class="fas fa-check-circle validator-status-pass text-lg"></i>' : 
+              validation.status === 'fail' ? '<i class="fas fa-times-circle validator-status-fail text-lg"></i>' :
+              '<i class="fas fa-exclamation-circle validator-status-warning text-lg"></i>'}
+          </td>
+        `;
+        validatorTableBody.appendChild(row);
+
+        if (validation.status === 'pass') validCount++;
+        else if (validation.status === 'fail') invalidCount++;
+        else warningCount++;
+
+        if (item.children && item.children.length > 0) {
+          item.children.forEach(child => addRow(child, level + 1));
+        }
+      }
+
+      data.forEach(item => addRow(item));
+
+      document.getElementById('validCount').textContent = validCount;
+      document.getElementById('invalidCount').textContent = invalidCount;
+      document.getElementById('warningCount').textContent = warningCount;
+    }
+
+    /**
+     * Decode QR from image
+     */
+    async function decodeQRFromImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+            if (code) {
+              resolve(code.data);
+            } else {
+              reject('Tidak dapat mendeteksi QR Code di gambar');
+            }
+          };
+          img.src = e.target.result;
+          previewImage.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /**
+     * Process and display decoded QR
+     */
+    function processDecodedQR(qrString) {
+      decodedRawValue.textContent = qrString;
+      decodedRawContainer.classList.remove('hidden');
+
+      const parsed = parseTLV(qrString);
+      displayValidator(parsed);
+      validatorContainer.classList.remove('hidden');
+      summaryStats.classList.remove('hidden');
+
+      // Also show parsed content
+      displayParsedContent(parsed, parsedContentList);
+      parsedContentContainer.classList.remove('hidden');
+    }
+
+    /**
+     * Display parsed content in nested format
      */
     function displayParsedContent(data, parentElement, level = 0) {
-      // Clear previous content if it's the top level
       if (level === 0) {
         parentElement.innerHTML = '';
       }
 
       if (!data.length) {
-        // Only show this message if it's the top level and no data was parsed
         if (level === 0) {
-          parentElement.innerHTML = '<p class="text-gray-500 italic">Tidak ada data TLV yang dikenali atau format tidak valid.</p>';
+          parentElement.innerHTML = '<p class="text-gray-500 italic">Tidak ada data yang dikenali.</p>';
         }
         return;
       }
 
       data.forEach(item => {
         const div = document.createElement('div');
-        div.className = `mb-1 ${level > 0 ? `ml-${level * 4}` : ''}`; // Indent based on level
+        div.className = `pl-${level * 4} border-l-2 ${level > 0 ? 'border-gray-300' : 'border-transparent'}`;
 
-        const tagSpan = document.createElement('span');
-        tagSpan.className = 'font-semibold text-green-700';
-        tagSpan.textContent = `Tag ${item.tag}`;
+        const header = document.createElement('div');
+        header.className = 'font-semibold text-green-700 mb-1';
+        header.innerHTML = `<i class="fas fa-tag mr-2"></i>Tag ${item.tag}: ${item.name}`;
 
-        const descSpan = document.createElement('span');
-        descSpan.className = 'text-red-600 ml-1';
-        descSpan.textContent = `(${item.description})`;
+        const value = document.createElement('div');
+        value.className = 'text-gray-800 font-mono text-xs break-words mb-2 bg-gray-50 p-2 rounded';
+        value.textContent = item.value;
 
-        const valueSpan = document.createElement('span');
-        valueSpan.className = 'text-gray-800 break-words';
-        valueSpan.textContent = `: ${item.value}`;
+        div.appendChild(header);
+        div.appendChild(value);
 
-        div.appendChild(tagSpan);
-        div.appendChild(descSpan);
-        div.appendChild(valueSpan);
-        parentElement.appendChild(div);
-
-        // Recursively display children
         if (item.children && item.children.length > 0) {
-          displayParsedContent(item.children, parentElement, level + 1);
+          const childDiv = document.createElement('div');
+          childDiv.className = 'mb-3';
+          div.appendChild(childDiv);
+          displayParsedContent(item.children, childDiv, level + 1);
         }
+
+        parentElement.appendChild(div);
       });
     }
 
-    /**
-     * Handles the QR code generation and TLV parsing logic.
-     */
-    async function generateQrCode() {
-      const input = qrInput.value.trim();
+    // ============ IMAGE UPLOAD HANDLING ============
+    imageDropZone.addEventListener('click', () => qrImageFile.click());
 
-      // Reset display
-      qrCodeImage.classList.add('hidden');
-      qrLoadingIndicator.classList.add('hidden');
-      placeholderText.classList.remove('hidden');
-      parsedContentContainer.classList.add('hidden');
-      parsedContentList.innerHTML = ''; // Clear previous parsed content
-      downloadOptions.classList.add('hidden'); // Hide download options initially
+    qrImageFile.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-      if (!input) {
-        showMessageBox('Mohon masukkan teks atau URL untuk menghasilkan QR Code.');
-        return;
+      try {
+        const qrString = await decodeQRFromImage(file);
+        imagePreview.classList.remove('hidden');
+        processDecodedQR(qrString);
+      } catch (error) {
+        showMessageBox('Error: ' + error);
+        imagePreview.classList.add('hidden');
       }
-
-      // Show loading indicator
-      qrLoadingIndicator.classList.remove('hidden');
-      placeholderText.classList.add('hidden'); // Hide placeholder when loading
-
-      // Get the selected file type for generation
-      const selectedFileType = fileTypeSelect.value;
-
-      // Request a larger QR code image from the API, now including format
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(input)}&format=${selectedFileType}`;
-      qrCodeImage.src = qrUrl; // Set the src immediately to trigger loading
-
-      // Use a Promise to handle image loading for better feedback
-      await new Promise((resolve) => {
-        qrCodeImage.onload = () => {
-          qrLoadingIndicator.classList.add('hidden');
-          qrCodeImage.classList.remove('hidden');
-          downloadOptions.classList.remove('hidden'); // Show download options after QR is loaded
-          resolve();
-        };
-        qrCodeImage.onerror = () => {
-          qrLoadingIndicator.classList.add('hidden');
-          showMessageBox('Gagal memuat QR Code. Pastikan koneksi internet Anda stabil.');
-          qrCodeImage.classList.add('hidden'); // Hide broken image icon
-          placeholderText.classList.remove('hidden'); // Show placeholder again
-          downloadOptions.classList.add('hidden'); // Hide download options on error
-          resolve(); // Resolve even on error to continue flow
-        };
-      });
-
-      // Attempt to parse TLV if the input looks like one (starts with '00' or similar common TLV tags)
-      // This is a heuristic, real validation would be more complex.
-      if (input.match(/^(00|01|26|51|52|53|54|58|59|60|63)\d{2}.+/)) {
-        const parsed = parseTLV(input);
-        displayParsedContent(parsed, parsedContentList);
-        parsedContentContainer.classList.remove('hidden');
-      } else {
-        // If it doesn't look like TLV, hide the parsed content section
-        parsedContentContainer.classList.add('hidden');
-      }
-    }
-
-    /**
-     * Handles the download of the generated QR code.
-     */
-    function downloadQrCode() {
-      const input = qrInput.value.trim();
-      if (!input) {
-        showMessageBox('Tidak ada QR Code untuk diunduh. Mohon hasilkan QR Code terlebih dahulu.');
-        return;
-      }
-
-      const selectedFileType = fileTypeSelect.value;
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(input)}&format=${selectedFileType}`; // Use a larger size for download
-
-      // Create a temporary anchor element to trigger the download
-      const link = document.createElement('a');
-      link.href = qrUrl;
-      link.download = `qrcode_${Date.now()}.${selectedFileType}`; // Dynamic filename
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    // Event Listeners
-    generateQrBtn.addEventListener('click', generateQrCode);
-    qrInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') generateQrCode();
     });
-    downloadQrBtn.addEventListener('click', downloadQrCode); // New event listener for download button
 
-    // Initial state setup
+    imageDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      imageDropZone.classList.add('border-green-600', 'bg-green-50');
+    });
+
+    imageDropZone.addEventListener('dragleave', () => {
+      imageDropZone.classList.remove('border-green-600', 'bg-green-50');
+    });
+
+    imageDropZone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      imageDropZone.classList.remove('border-green-600', 'bg-green-50');
+      
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        qrImageFile.files = e.dataTransfer.files;
+        const event = new Event('change', { bubbles: true });
+        qrImageFile.dispatchEvent(event);
+      }
+    });
+
+    // ============ RAW STRING DECODING ============
+    decodeRawBtn.addEventListener('click', () => {
+      const qrStr = rawQrString.value.trim();
+      if (!qrStr) {
+        showMessageBox('Mohon masukkan raw QR string');
+        return;
+      }
+
+      try {
+        imagePreview.classList.add('hidden');
+        processDecodedQR(qrStr);
+      } catch (error) {
+        showMessageBox('Error: ' + error);
+      }
+    });
+
+    rawQrString.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') {
+        decodeRawBtn.click();
+      }
+    });
+
+    // ============ INITIAL STATE ============
     document.addEventListener('DOMContentLoaded', () => {
       qrCodeImage.classList.add('hidden');
       placeholderText.classList.remove('hidden');
-      parsedContentContainer.classList.add('hidden');
-      downloadOptions.classList.add('hidden'); // Ensure hidden on load
+      downloadOptions.classList.add('hidden');
     });
   </script>
 </body>
