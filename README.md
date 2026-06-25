@@ -15,9 +15,8 @@ Value enriched — contoh tag 53 (currency) langsung tampil 360 → IDR – Rupi
 Tag 01 langsung tampil apakah Static atau Dynamic QR
 
 ---
-## Tag Descriptions
-// Define descriptions for common EMVCo/QRIS TLV tags
-    const tagDescriptions = {
+## Tag Descriptions // Define descriptions for common EMVCo/QRIS TLV tags
+tag Descriptions: 
       '00': 'Payload Format Indicator',
       '01': 'Point of Initiation Method',
       '02': 'Visa Credit', // Example for Merchant Account Information (MAI)
@@ -81,4 +80,3 @@ Tag 01 langsung tampil apakah Static atau Dynamic QR
       '84': 'RFU for EMVCo',
       '85': 'Merchant Information - Proprietary',
       '99': 'Unreserved Templates',
-    };
